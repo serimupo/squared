@@ -462,6 +462,36 @@
     font-weight:500; font-size:14px; cursor:pointer; transition:background var(--m-fast) var(--ease-standard);
   }
   .modal-close-btn:hover { background:var(--primary-dark); }
+
+  /* MOBILE OPTIMIZATION */
+  @media (max-width:600px){
+    .wrap { padding:0 16px; }
+    .stage-frame { padding:16px; }
+    .section { padding:44px 0; }
+    .section-tight { padding:36px 0; }
+    h1 { font-size:clamp(30px,8vw,38px); }
+    h2 { font-size:24px; }
+    .hero { padding:80px 16px 0; min-height:auto; }
+    .hero-sub { font-size:15px; }
+    .apply-grid { gap:16px; }
+    .apply-tool, .result-panel { padding:20px; }
+    .chip-label { margin:16px 0 8px; font-size:12px; }
+    .chip { padding:8px 14px; font-size:13px; }
+    .result-counter { font-size:44px; }
+    .plan-card { padding:24px 20px; }
+    .plan-price { font-size:28px; }
+    .expand-head { gap:14px; }
+    .expand-no { width:22px; font-size:12px; }
+    .expand-title { font-size:17px; }
+    .expand-icon { width:26px; height:26px; }
+    .expand-body { padding-left:36px; }
+    .expand-body p { font-size:13.5px; }
+    .discover-cap b { font-size:14px; }
+    .find-prose { font-size:18px; padding-top:48px; }
+    .find-search-float { padding:4px 8px 4px 16px; }
+    .cta-box { padding:28px 18px !important; }
+    .step, .s-card { padding:18px 16px; }
+  }
 </style>
 </head>
 <body>
