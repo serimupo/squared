@@ -350,14 +350,6 @@
               <a href="index.html#signup" class="result-cta">베타 신청하기 →</a>
             </div>
           </div>
-          <div class="ref-mood-wrap" id="refMoodWrap">
-            <div class="ref-mood-label">가장 가까운 레퍼런스 무드</div>
-            <div class="ref-mood-card">
-              <img id="refMoodImg" src="" alt="">
-              <div class="rmc-name" id="refMoodName"></div>
-            </div>
-            <p class="ref-mood-note">CMF 디자이너가 직접 제작한 무드보드 예시예요.</p>
-          </div>
         </div>
       </div>
 
@@ -393,6 +385,14 @@
     <div class="mb-image-modal-actions">
       <a id="mbImageDownload" class="btn-primary" download="squared-moodboard.png">이미지 다운로드</a>
       <button id="mbImageClose" type="button">닫기</button>
+    </div>
+    <div class="ref-mood-wrap" id="refMoodWrap">
+      <div class="ref-mood-label">가장 가까운 레퍼런스 무드</div>
+      <div class="ref-mood-card">
+        <img id="refMoodImg" src="" alt="">
+        <div class="rmc-name" id="refMoodName"></div>
+      </div>
+      <p class="ref-mood-note">CMF 디자이너가 직접 제작한 무드보드 예시예요.</p>
     </div>
   </div>
 </div>
@@ -522,7 +522,6 @@
     const resultSetWrap = document.getElementById('resultSetWrap');
     const resultHint = document.getElementById('resultHint');
     const btnAddMood = document.getElementById('btnAddMood');
-    const refMoodWrap = document.getElementById('refMoodWrap');
     if (chipCount >= 3) {
       currentSet = pickResultSet(selectedChips);
       renderResultSet(currentSet);
@@ -533,21 +532,10 @@
       });
       btnAddMood.classList.toggle('added', allAdded);
       btnAddMood.textContent = allAdded ? '✓ 무드보드에 담김' : '+ 이 조합을 무드보드에 추가';
-
-      const ref = pickMoodRef(selectedChips);
-      if (ref) {
-        document.getElementById('refMoodImg').src = ref.img;
-        document.getElementById('refMoodImg').alt = ref.name;
-        document.getElementById('refMoodName').textContent = ref.name;
-        refMoodWrap.style.display = 'block';
-      } else {
-        refMoodWrap.style.display = 'none';
-      }
     } else {
       currentSet = [];
       resultSetWrap.style.display = 'none';
       resultHint.style.display = 'block';
-      refMoodWrap.style.display = 'none';
     }
   }
 
@@ -705,6 +693,21 @@
       document.getElementById('mbImageResult').src = dataUrl;
       document.getElementById('mbImageDownload').href = dataUrl;
       document.getElementById('mbImageCaption').textContent = items.map(function(it){ return it.name; }).join(' · ');
+
+      // pick the curated reference mood closest to the materials just composited
+      const tagUnion = new Set();
+      items.forEach(function(it){ (it.tags || []).forEach(function(t){ tagUnion.add(t); }); });
+      const ref = pickMoodRef(tagUnion);
+      const refMoodWrap = document.getElementById('refMoodWrap');
+      if (ref) {
+        document.getElementById('refMoodImg').src = ref.img;
+        document.getElementById('refMoodImg').alt = ref.name;
+        document.getElementById('refMoodName').textContent = ref.name;
+        refMoodWrap.style.display = 'block';
+      } else {
+        refMoodWrap.style.display = 'none';
+      }
+
       document.getElementById('mbImageModalOverlay').classList.add('open');
     }).catch(function(){
       alert('이미지를 만드는 중 문제가 생겼어요. GitHub Pages에 배포된 주소에서 다시 시도해주세요 (로컬 파일을 직접 열면 브라우저 보안 정책 때문에 실패할 수 있어요).');
@@ -720,7 +723,7 @@
     if (!currentSet || currentSet.length === 0) return;
     currentSet.forEach(function(m){
       if (moodboard.some(function(mb){ return mb.name === m.name; })) return;
-      moodboard.push({ name: m.name, img: m.img, cat: m.cat });
+      moodboard.push({ name: m.name, img: m.img, cat: m.cat, tags: m.tags || [] });
     });
     saveMoodboard();
     renderMoodboard();
