@@ -374,20 +374,18 @@
   </div>
 </div>
 
-<canvas id="moodboardCanvas" width="1000" height="1000" style="display:none;"></canvas>
-
 <div class="mb-image-modal-overlay" id="mbImageModalOverlay">
   <div class="mb-image-modal-box">
     <h4>CMF 무드보드가 만들어졌어요</h4>
-    <p class="mb-image-note">무드보드에 담은 소재 중 최근 6개를 하나의 이미지로 합성했어요.</p>
-    <img id="mbImageResult" alt="생성된 CMF 무드보드">
+    <p class="mb-image-note">무드보드에 담은 소재와 가장 잘 어울리는 레퍼런스 무드예요.</p>
+    <img id="mbImageResult" alt="매칭된 CMF 무드보드">
     <div class="mb-image-caption" id="mbImageCaption"></div>
     <div class="mb-image-modal-actions">
-      <a id="mbImageDownload" class="btn-primary" download="squared-moodboard.png">이미지 다운로드</a>
+      <a id="mbImageDownload" class="btn-primary" download="squared-moodboard.jpg">이미지 다운로드</a>
       <button id="mbImageClose" type="button">닫기</button>
     </div>
     <div class="ref-mood-wrap" id="refMoodWrap">
-      <div class="ref-mood-label">가장 가까운 레퍼런스 무드</div>
+      <div class="ref-mood-label">이런 무드도 잘 어울려요</div>
       <div class="ref-mood-card">
         <img id="refMoodImg" src="" alt="">
         <div class="rmc-name" id="refMoodName"></div>
@@ -479,21 +477,25 @@
      keyword combo they represent — matched against the current selection the same way materials are */
   const MOOD_REFS = [
     { img:'img/moodref-luxury-stone-bronze.jpg', name:'럭셔리 스톤 & 브론즈 무드', tags:['고급스러운','따뜻한','매끈한','대리석','황동'] },
+    { img:'img/moodref-luxury-stone-bronze-alt.jpg', name:'럭셔리 스톤 & 브론즈 무드 (accessory ver.)', tags:['고급스러운','따뜻한','매끈한','대리석','황동'] },
     { img:'img/moodref-rugged-durable.jpg', name:'러프 & 내구성 무드', tags:['러프한','내구성 있는','고무'] },
+    { img:'img/moodref-rugged-neutral.jpg', name:'러프 & 내구성 무드 (뉴트럴 ver.)', tags:['러프한','내구성 있는','고무','미니멀한'] },
     { img:'img/moodref-minimal-metal.jpg', name:'미니멀 메탈 무드', tags:['매끈한','차가운','알루미늄'] },
+    { img:'img/moodref-minimal-metal-alt.jpg', name:'미니멀 메탈 무드 (레이어 ver.)', tags:['매끈한','차가운','알루미늄'] },
     { img:'img/moodref-warm-natural.jpg', name:'웜 내추럴 무드', tags:['따뜻한','자연스러운','오크','콘크리트','펠트'] },
+    { img:'img/moodref-warm-natural-sunlit.jpg', name:'웜 내추럴 무드 (선라이트 ver.)', tags:['따뜻한','자연스러운','콘크리트','펠트'] },
+    { img:'img/moodref-neutral-stone-textile.jpg', name:'뉴트럴 스톤 & 텍스타일 무드', tags:['자연스러운','러프한','콘크리트','리넨'] },
     { img:'img/moodref-dark-textile-leather.jpg', name:'다크 텍스타일 & 레더 무드', tags:['미니멀한','고급스러운','매끈한','가죽','리넨','대리석'] }
   ];
 
-  function pickMoodRef(chips){
-    if (chips.size === 0) return null;
+  function pickMoodRefs(chips, n){
     const scored = MOOD_REFS.map(function(r){
       let score = 0;
       r.tags.forEach(function(t){ if (chips.has(t)) score++; });
       return { r: r, score: score };
     });
     scored.sort(function(a, b){ return b.score - a.score; });
-    return scored[0].score > 0 ? scored[0].r : null;
+    return scored.slice(0, n).map(function(s){ return s.r; });
   }
 
   function renderResultSet(set){
@@ -584,134 +586,36 @@
   }
   renderMoodboard();
 
-  /* CMF MOODBOARD IMAGE COMPOSITING (canvas) — arranges swatch photos into a
-     flat-lay style single image, echoing the layered stone/metal/wood reference moodboards */
-  const MB_SLOTS = [
-    { type:'rect',   x:70,  y:140, w:430, h:660, r:6 },   // background slab (tall, bottom-left)
-    { type:'circle', cx:660, cy:270, r:150 },              // large disc, top-right
-    { type:'rect',   x:470, y:330, w:190, h:140, r:6 },    // small sample overlapping disc
-    { type:'rect',   x:730, y:140, w:200, h:560, r:4 },    // tall right panel
-    { type:'rect',   x:370, y:220, w:55,  h:170, r:8 },    // thin vertical bar
-    { type:'rect',   x:640, y:470, w:230, h:270, r:6 }     // bottom-right accent
-  ];
-  const MB_Z_ORDER = [0, 3, 1, 2, 4, 5];
-
-  function mbRoundRectPath(ctx, x, y, w, h, r){
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
-  function mbDrawImageCover(ctx, img, x, y, w, h){
-    const ir = img.width / img.height, tr = w / h;
-    let sx, sy, sw, sh;
-    if (ir > tr) { sh = img.height; sw = sh * tr; sy = 0; sx = (img.width - sw) / 2; }
-    else { sw = img.width; sh = sw / tr; sx = 0; sy = (img.height - sh) / 2; }
-    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-  }
-
-  function mbShadowPass(ctx, pathFn){
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.32)';
-    ctx.shadowBlur = 26;
-    ctx.shadowOffsetX = 10;
-    ctx.shadowOffsetY = 20;
-    ctx.fillStyle = '#000';
-    pathFn();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function mbDrawSlot(ctx, slot, img){
-    if (slot.type === 'rect') {
-      mbShadowPass(ctx, function(){ mbRoundRectPath(ctx, slot.x, slot.y, slot.w, slot.h, slot.r); });
-      ctx.save();
-      mbRoundRectPath(ctx, slot.x, slot.y, slot.w, slot.h, slot.r);
-      ctx.clip();
-      mbDrawImageCover(ctx, img, slot.x, slot.y, slot.w, slot.h);
-      ctx.restore();
-    } else {
-      mbShadowPass(ctx, function(){ ctx.beginPath(); ctx.arc(slot.cx, slot.cy, slot.r, 0, Math.PI * 2); });
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(slot.cx, slot.cy, slot.r, 0, Math.PI * 2);
-      ctx.clip();
-      mbDrawImageCover(ctx, img, slot.cx - slot.r, slot.cy - slot.r, slot.r * 2, slot.r * 2);
-      ctx.restore();
-    }
-  }
-
-  function mbLoadImage(src){
-    return new Promise(function(resolve, reject){
-      const img = new Image();
-      img.onload = function(){ resolve(img); };
-      img.onerror = reject;
-      img.src = src;
-    });
-  }
-
+  /* CMF MOODBOARD IMAGE — instead of compositing a synthetic collage, match the moodboard's
+     accumulated material tags against the curated real designer-made flat-lay photos and show
+     the closest one directly (plus a second-best alternative, since there's more than one candidate) */
   function generateMoodboardImage(){
     if (moodboard.length < 2) return;
     const items = moodboard.slice(-6);
-    const canvas = document.getElementById('moodboardCanvas');
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
+    const tagUnion = new Set();
+    items.forEach(function(it){ (it.tags || []).forEach(function(t){ tagUnion.add(t); }); });
 
-    Promise.all(items.map(function(it){ return mbLoadImage(it.img); })).then(function(imgs){
-      const grad = ctx.createLinearGradient(0, 0, W, H);
-      grad.addColorStop(0, '#EAE7E1');
-      grad.addColorStop(1, '#DBD7CF');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, W, H);
+    const picks = pickMoodRefs(tagUnion, 2);
+    const primary = picks[0];
+    const secondary = picks[1] && picks[1].img !== primary.img ? picks[1] : null;
 
-      const zOrder = MB_Z_ORDER.filter(function(i){ return i < items.length; });
-      zOrder.forEach(function(slotIdx){
-        mbDrawSlot(ctx, MB_SLOTS[slotIdx], imgs[slotIdx]);
-      });
+    document.getElementById('mbImageResult').src = primary.img;
+    document.getElementById('mbImageResult').alt = primary.name;
+    document.getElementById('mbImageDownload').href = primary.img;
+    document.getElementById('mbImageDownload').setAttribute('download', primary.img.split('/').pop());
+    document.getElementById('mbImageCaption').textContent = '담은 소재: ' + items.map(function(it){ return it.name; }).join(' · ');
 
-      // soft diagonal light-shadow bands, echoing the sunlit-wall look of a real flat-lay shoot
-      ctx.save();
-      ctx.globalAlpha = 0.09;
-      ctx.fillStyle = '#000';
-      ctx.translate(W * 0.72, H * 0.1);
-      ctx.rotate(-23 * Math.PI / 180);
-      ctx.fillRect(-200, -40, 1500, 70);
-      ctx.restore();
-      ctx.save();
-      ctx.globalAlpha = 0.05;
-      ctx.fillStyle = '#000';
-      ctx.translate(W * 0.85, H * 0.05);
-      ctx.rotate(-23 * Math.PI / 180);
-      ctx.fillRect(-200, -20, 1500, 140);
-      ctx.restore();
+    const refMoodWrap = document.getElementById('refMoodWrap');
+    if (secondary) {
+      document.getElementById('refMoodImg').src = secondary.img;
+      document.getElementById('refMoodImg').alt = secondary.name;
+      document.getElementById('refMoodName').textContent = secondary.name;
+      refMoodWrap.style.display = 'block';
+    } else {
+      refMoodWrap.style.display = 'none';
+    }
 
-      const dataUrl = canvas.toDataURL('image/png');
-      document.getElementById('mbImageResult').src = dataUrl;
-      document.getElementById('mbImageDownload').href = dataUrl;
-      document.getElementById('mbImageCaption').textContent = items.map(function(it){ return it.name; }).join(' · ');
-
-      // pick the curated reference mood closest to the materials just composited
-      const tagUnion = new Set();
-      items.forEach(function(it){ (it.tags || []).forEach(function(t){ tagUnion.add(t); }); });
-      const ref = pickMoodRef(tagUnion);
-      const refMoodWrap = document.getElementById('refMoodWrap');
-      if (ref) {
-        document.getElementById('refMoodImg').src = ref.img;
-        document.getElementById('refMoodImg').alt = ref.name;
-        document.getElementById('refMoodName').textContent = ref.name;
-        refMoodWrap.style.display = 'block';
-      } else {
-        refMoodWrap.style.display = 'none';
-      }
-
-      document.getElementById('mbImageModalOverlay').classList.add('open');
-    }).catch(function(){
-      alert('이미지를 만드는 중 문제가 생겼어요. GitHub Pages에 배포된 주소에서 다시 시도해주세요 (로컬 파일을 직접 열면 브라우저 보안 정책 때문에 실패할 수 있어요).');
-    });
+    document.getElementById('mbImageModalOverlay').classList.add('open');
   }
 
   document.getElementById('btnGenerateMood').addEventListener('click', generateMoodboardImage);
