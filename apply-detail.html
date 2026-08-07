@@ -155,6 +155,17 @@
   }
   .result-cta:hover { background:var(--primary); color:#ffffff; }
 
+  /* REFERENCE MOOD (curated CMF flat-lay images matched to the current keyword combo) */
+  .ref-mood-wrap { display:none; margin-top:22px; border-top:1px solid var(--line); padding-top:22px; }
+  .ref-mood-label { font-size:12.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:12px; }
+  .ref-mood-card { position:relative; border-radius:var(--r-control); overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+  .ref-mood-card img { width:100%; display:block; }
+  .ref-mood-card .rmc-name {
+    position:absolute; left:0; right:0; bottom:0; padding:16px 14px 12px;
+    background:linear-gradient(to top, rgba(0,0,0,0.68), transparent); color:#fff; font-size:14px; font-weight:700;
+  }
+  .ref-mood-note { font-size:12px; color:var(--faint); margin-top:8px; }
+
   /* MOODBOARD */
   .moodboard-section { margin-top:64px; }
   .moodboard-head { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
@@ -339,6 +350,14 @@
               <a href="index.html#signup" class="result-cta">베타 신청하기 →</a>
             </div>
           </div>
+          <div class="ref-mood-wrap" id="refMoodWrap">
+            <div class="ref-mood-label">가장 가까운 레퍼런스 무드</div>
+            <div class="ref-mood-card">
+              <img id="refMoodImg" src="" alt="">
+              <div class="rmc-name" id="refMoodName"></div>
+            </div>
+            <p class="ref-mood-note">CMF 디자이너가 직접 제작한 무드보드 예시예요.</p>
+          </div>
         </div>
       </div>
 
@@ -456,6 +475,27 @@
 
   let currentSet = [];
 
+  /* curated CMF flat-lay moodboards (real designer-made reference images), each tagged with the
+     keyword combo they represent — matched against the current selection the same way materials are */
+  const MOOD_REFS = [
+    { img:'img/moodref-luxury-stone-bronze.jpg', name:'럭셔리 스톤 & 브론즈 무드', tags:['고급스러운','따뜻한','매끈한','대리석','황동'] },
+    { img:'img/moodref-rugged-durable.jpg', name:'러프 & 내구성 무드', tags:['러프한','내구성 있는','고무'] },
+    { img:'img/moodref-minimal-metal.jpg', name:'미니멀 메탈 무드', tags:['매끈한','차가운','알루미늄'] },
+    { img:'img/moodref-warm-natural.jpg', name:'웜 내추럴 무드', tags:['따뜻한','자연스러운','오크','콘크리트','펠트'] },
+    { img:'img/moodref-dark-textile-leather.jpg', name:'다크 텍스타일 & 레더 무드', tags:['미니멀한','고급스러운','매끈한','가죽','리넨','대리석'] }
+  ];
+
+  function pickMoodRef(chips){
+    if (chips.size === 0) return null;
+    const scored = MOOD_REFS.map(function(r){
+      let score = 0;
+      r.tags.forEach(function(t){ if (chips.has(t)) score++; });
+      return { r: r, score: score };
+    });
+    scored.sort(function(a, b){ return b.score - a.score; });
+    return scored[0].score > 0 ? scored[0].r : null;
+  }
+
   function renderResultSet(set){
     const wrap = document.getElementById('resultSet');
     wrap.innerHTML = '';
@@ -482,6 +522,7 @@
     const resultSetWrap = document.getElementById('resultSetWrap');
     const resultHint = document.getElementById('resultHint');
     const btnAddMood = document.getElementById('btnAddMood');
+    const refMoodWrap = document.getElementById('refMoodWrap');
     if (chipCount >= 3) {
       currentSet = pickResultSet(selectedChips);
       renderResultSet(currentSet);
@@ -492,10 +533,21 @@
       });
       btnAddMood.classList.toggle('added', allAdded);
       btnAddMood.textContent = allAdded ? '✓ 무드보드에 담김' : '+ 이 조합을 무드보드에 추가';
+
+      const ref = pickMoodRef(selectedChips);
+      if (ref) {
+        document.getElementById('refMoodImg').src = ref.img;
+        document.getElementById('refMoodImg').alt = ref.name;
+        document.getElementById('refMoodName').textContent = ref.name;
+        refMoodWrap.style.display = 'block';
+      } else {
+        refMoodWrap.style.display = 'none';
+      }
     } else {
       currentSet = [];
       resultSetWrap.style.display = 'none';
       resultHint.style.display = 'block';
+      refMoodWrap.style.display = 'none';
     }
   }
 
