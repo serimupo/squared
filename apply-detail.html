@@ -151,7 +151,7 @@
   .result-cta {
     display:inline-flex; align-items:center; justify-content:center; padding:0 18px; height:44px; background:var(--primary-tint);
     color:var(--primary-dark); font-size:13.5px; font-weight:600; border-radius:var(--r-action); flex:1; min-width:180px; text-align:center;
-    transition:background var(--m-fast) var(--ease-standard);
+    transition:background var(--m-fast) var(--ease-standard); border:none; cursor:pointer; font-family:inherit;
   }
   .result-cta:hover { background:var(--primary); color:#ffffff; }
 
@@ -233,6 +233,29 @@
     background:transparent; cursor:pointer; font-size:14px; color:var(--muted); font-family:inherit;
   }
   .mb-image-modal-actions button:hover { border-color:var(--faint); }
+
+  /* FEASIBILITY CHECK MODAL — per-material manufacturing feasibility / environmental impact / similar use cases */
+  .feasibility-modal-box { background:var(--canvas); border-radius:var(--r-control); padding:26px; max-width:640px; width:100%; max-height:88vh; overflow-y:auto; }
+  .feasibility-modal-box h4 { font-size:17px; font-weight:600; color:var(--ink); margin-bottom:4px; }
+  .feasibility-modal-box .fm-note { font-size:12.5px; color:var(--faint); margin-bottom:18px; }
+  .fm-list { display:flex; flex-direction:column; gap:12px; margin-bottom:20px; }
+  .fm-card { display:flex; gap:14px; padding:14px; border-radius:var(--r-control); background:var(--surface); border:1px solid var(--line); }
+  .fm-card img { width:64px; height:64px; border-radius:10px; object-fit:cover; flex:0 0 auto; display:block; }
+  .fm-card-body { flex:1; min-width:0; }
+  .fm-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .fm-card-name { font-size:14.5px; font-weight:700; color:var(--ink); }
+  .fm-card-cat { font-size:11.5px; color:var(--faint); margin-top:2px; }
+  .fm-status { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:var(--r-pill); font-size:11.5px; font-weight:700; white-space:nowrap; flex:0 0 auto; }
+  .fm-status .dot { width:7px; height:7px; border-radius:50%; flex:0 0 auto; }
+  .fm-status.green { background:var(--primary-tint); color:var(--primary-dark); }
+  .fm-status.green .dot { background:var(--primary); }
+  .fm-status.yellow { background:#FBF1DC; color:#8A6314; }
+  .fm-status.yellow .dot { background:#D9A32B; }
+  .fm-stats { display:flex; flex-direction:column; gap:5px; }
+  .fm-stat-row { display:flex; justify-content:space-between; gap:14px; font-size:12.5px; color:var(--muted); }
+  .fm-stat-row span:first-child { flex:0 0 auto; }
+  .fm-stat-row span:last-child { color:var(--ink); font-weight:600; text-align:right; }
+  .fm-empty { text-align:center; padding:30px 16px; color:var(--faint); font-size:13.5px; }
 
   footer { padding:32px 0; border-top:1px solid var(--line); margin-top:40px; }
   .foot-row { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
@@ -341,7 +364,7 @@
             <div class="result-set" id="resultSet"></div>
             <div class="result-actions">
               <button class="btn-add-mood" id="btnAddMood" type="button">+ 이 조합을 무드보드에 추가</button>
-              <a href="index.html#signup" class="result-cta">베타 신청하기 →</a>
+              <button class="result-cta" id="btnFeasibility" type="button">양산 가능성 체크 →</button>
             </div>
           </div>
         </div>
@@ -376,6 +399,17 @@
     <div class="mb-mood-compare" id="mbMoodCompare"></div>
     <div class="mb-image-modal-actions">
       <button id="mbImageClose" type="button">닫기</button>
+    </div>
+  </div>
+</div>
+
+<div class="mb-image-modal-overlay" id="feasibilityModalOverlay">
+  <div class="feasibility-modal-box">
+    <h4>양산 가능성 체크</h4>
+    <p class="fm-note">선택한 소재 조합의 예상 양산 가능성, 환경 영향 지수, 유사 제품군 활용 사례예요.</p>
+    <div class="fm-list" id="fmList"></div>
+    <div class="mb-image-modal-actions">
+      <button id="fmClose" type="button">닫기</button>
     </div>
   </div>
 </div>
@@ -437,6 +471,77 @@
     { img:'img/red-marble.png', name:'레드 마블', cat:'Stone', desc:'리빙 오브제 레퍼런스에서 착안 · 딥레드 베이닝 · 고급스러운 무게감 · 테이블탑·소형 가구에 활용', tags:['고급스러운','매끈한','대리석','유광'] },
     { img:'img/brushed-brass.png', name:'브러시드 브론즈', cat:'Metal', desc:'인테리어 하드웨어 레퍼런스에서 착안 · 웜톤 브러시드 마감 · 고급스러운 반사감 · 가구·조명 하드웨어에 활용', tags:['고급스러운','따뜻한','황동','브러시드'] }
   ];
+
+  /* MANUFACTURING FEASIBILITY DATA — per-material estimate of production feasibility (%),
+     environmental impact index (1=low impact, 5=high impact), and similar product categories
+     already using the material. status: 'green' = viable at typical MOQ, 'yellow' = limited/conditional. */
+  const MFG_DATA = {
+    '브러시드 알루미늄':          { feasibility:92, impact:2.8, similar:'프리미엄 조명·가전 마감', status:'green' },
+    '코팅 페이퍼보드':            { feasibility:95, impact:1.6, similar:'럭셔리 리테일 패키징',     status:'green' },
+    '울 펠트 원단':               { feasibility:88, impact:1.9, similar:'어퍼럴·홈 텍스타일',       status:'green' },
+    '매트 세라믹':                { feasibility:64, impact:3.1, similar:'리빙 오브제·테이블웨어',   status:'yellow' },
+    '글로시 화이트 라카':         { feasibility:90, impact:2.7, similar:'가구·소형 가전 외장',       status:'green' },
+    '매트 화이트 스틸':           { feasibility:91, impact:2.9, similar:'조명 셰이드·가전 하우징',   status:'green' },
+    '앰버 글라스':                { feasibility:85, impact:2.5, similar:'뷰티·프래그런스 용기',     status:'green' },
+    '매트 라임 플라스터':         { feasibility:58, impact:2.3, similar:'VMD·디스플레이 소품',       status:'yellow' },
+    '매트 블랙 다이캐스트 알루미늄': { feasibility:89, impact:3.2, similar:'가구 프레임·구조 파츠',   status:'green' },
+    '실크 새틴 원단':             { feasibility:71, impact:2.6, similar:'베딩·이브닝웨어',           status:'yellow' },
+    '푸드그레이드 실리콘':        { feasibility:93, impact:2.4, similar:'주방·바 소품',              status:'green' },
+    '매트 화이트 파우더코트 스틸': { feasibility:90, impact:2.8, similar:'가전·가구 하우징',          status:'green' },
+    '크림 톤 매트 페인트':        { feasibility:94, impact:2.2, similar:'가구·인테리어 도장',         status:'green' },
+    '매트 화이트 컴포지트':       { feasibility:86, impact:2.9, similar:'스포츠 장비 표면',           status:'green' },
+    '매트 화이트 알루미늄':       { feasibility:92, impact:2.7, similar:'보틀·텀블러 바디',           status:'green' },
+    '프로스티드 글라스':          { feasibility:82, impact:2.6, similar:'뷰티·리빙 보틀',             status:'green' },
+    '소프트터치 실리콘':          { feasibility:87, impact:2.5, similar:'웨어러블·퍼스널 디바이스',   status:'green' },
+    '매트 화이트 폴리카보네이트': { feasibility:84, impact:3.0, similar:'소형 가전 외장',             status:'green' },
+    '클리어 글라스':              { feasibility:88, impact:2.4, similar:'뷰티 리필 패키징',           status:'green' },
+    '다크그린 러버 그리드':       { feasibility:79, impact:3.3, similar:'아웃도어·스포츠 소품',       status:'yellow' },
+    '레드 마블':                  { feasibility:47, impact:3.8, similar:'테이블탑·소형 가구',         status:'yellow' },
+    '브러시드 브론즈':            { feasibility:76, impact:3.4, similar:'가구·조명 하드웨어',         status:'yellow' }
+  };
+
+  function renderFeasibility(set){
+    const wrap = document.getElementById('fmList');
+    wrap.innerHTML = '';
+    if (!set.length) {
+      wrap.innerHTML = '<div class="fm-empty">먼저 왼쪽에서 키워드를 선택해 소재 조합을 확인해주세요.</div>';
+      return;
+    }
+    set.forEach(function(m){
+      const data = MFG_DATA[m.name] || { feasibility:75, impact:2.8, similar:'유사 제품군 데이터 준비 중', status:'yellow' };
+      const statusLabel = data.status === 'green' ? '가능' : '제한적';
+      const el = document.createElement('div');
+      el.className = 'fm-card';
+      el.innerHTML =
+        '<img src="' + m.img + '" alt="' + m.name + '">' +
+        '<div class="fm-card-body">' +
+          '<div class="fm-card-top">' +
+            '<div>' +
+              '<div class="fm-card-name">' + m.name + '</div>' +
+              '<div class="fm-card-cat">' + m.cat + '</div>' +
+            '</div>' +
+            '<span class="fm-status ' + data.status + '"><span class="dot"></span>' + statusLabel + '</span>' +
+          '</div>' +
+          '<div class="fm-stats">' +
+            '<div class="fm-stat-row"><span>양산 가능성</span><span>' + data.feasibility + '%</span></div>' +
+            '<div class="fm-stat-row"><span>환경 영향 지수</span><span>' + data.impact.toFixed(1) + ' / 5</span></div>' +
+            '<div class="fm-stat-row"><span>유사 제품군 사례</span><span>' + data.similar + '</span></div>' +
+          '</div>' +
+        '</div>';
+      wrap.appendChild(el);
+    });
+  }
+
+  document.getElementById('btnFeasibility').addEventListener('click', function(){
+    renderFeasibility(currentSet);
+    document.getElementById('feasibilityModalOverlay').classList.add('open');
+  });
+  document.getElementById('fmClose').addEventListener('click', function(){
+    document.getElementById('feasibilityModalOverlay').classList.remove('open');
+  });
+  document.getElementById('feasibilityModalOverlay').addEventListener('click', function(e){
+    if (e.target === this) this.classList.remove('open');
+  });
 
   function scoreMaterial(material, chips){
     let score = 0;
